@@ -2,8 +2,45 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <complex.h>
 
-void mandelbrot(int* map, size_t order, double xcenter, double ycenter, double zoom, int cutoff) {
+void mandelbrot(int* map, size_t N, double xcenter, double ycenter, double zoom, int cutoff) {
+    double complex z_0 = CMPLX(0,0);
+    double complex z_n_1, z_n;
+    size_t i,j;
+
+    double z = pow(2.0, -zoom);
+
+    // Calculate the half width and half height of the plot area
+    double half_width = (N / 2) * z;
+    double half_height = (N / 2) * z;
+
+    // Calculate the bounds of the plot area
+    double x_min = xcenter - half_width;
+    double x_max = xcenter + half_width;
+    double y_min = ycenter - half_height;
+    double y_max = ycenter + half_height;
+
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
+            double x = x_min + i * z;
+            double y = y_max - j * z; // Note the inversion in the y-axis
+
+            double zx = 0.0, zy = 0.0;
+            int iterations = 0;
+            while (zx * zx + zy * zy <= 4.0 && iterations < cutoff) {
+                double temp = zx * zx - zy * zy + x;
+                zy = 2.0 * zx * zy + y;
+                zx = temp;
+                iterations++;
+            }
+
+            // Store the result in the image array
+            map[i * N + j] = get_color(iterations, cutoff);
+        }
+    }
+    // while (order < cutoff || cabs(z_n) < 2.0) {
+    // }
 
 }
 void write_pgm(char *filename, int* map, size_t order, int cutoff) {
@@ -71,7 +108,7 @@ int main(int argc, char *argv[])
 	parse_double(argv[4], "zoom", 0, 100, &zoom);
 	parse_int(argv[5], "cutoff", 10, 255, &cutoff);
 
-    map = aligned_alloc(64, order * order * sizeof(int));
+    map = aligned_alloc(64, order * order * sizeof(double complex));
 
     /* Call implementation */
     mandelbrot(map, order, xcenter, ycenter, zoom, cutoff); 
