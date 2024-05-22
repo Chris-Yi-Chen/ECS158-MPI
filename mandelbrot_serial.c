@@ -2,55 +2,56 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <complex.h>
+#include <math.h>
 
+//gcc -g -Wall -Wextra -Werror -O2 .\mandelbrot_serial.c -o mandelbrot_serial
 void mandelbrot(int* map, size_t N, double xcenter, double ycenter, double zoom, int cutoff) {
-    double complex z_0 = CMPLX(0,0);
-    double complex z_n_1, z_n;
     size_t i,j;
 
-    double z = pow(2.0, -zoom);
+    // z: distance between points
+    double dist = pow(2.0, -zoom);
 
     // Calculate the half width and half height of the plot area
-    double half_width = (N / 2) * z;
-    double half_height = (N / 2) * z;
+    double half_width = (N / 2) * dist;
+    double half_height = (N / 2) * dist;
 
     // Calculate the bounds of the plot area
     double x_min = xcenter - half_width;
-    double x_max = xcenter + half_width;
-    double y_min = ycenter - half_height;
     double y_max = ycenter + half_height;
 
     for (i = 0; i < N; i++) {
         for (j = 0; j < N; j++) {
-            double x = x_min + i * z;
-            double y = y_max - j * z; // Note the inversion in the y-axis
+            // x and y coordinates
+            double x_coords = x_min + (i * dist);
+            double y_coords = y_max - (j * dist); 
 
             double zx = 0.0, zy = 0.0;
+            
             int iterations = 0;
+            // cx * cx + cy * cy <= 4.0 AKA |c| <= 2
             while (zx * zx + zy * zy <= 4.0 && iterations < cutoff) {
-                double temp = zx * zx - zy * zy + x;
-                zy = 2.0 * zx * zy + y;
-                zx = temp;
+                // temp because zy uses the old zx value
+                // z^2 = (a^2 - b^2) + (2ab)i
+                double temp_zx = (zx * zx - zy * zy) + x_coords;
+                zy = 2.0 * zx * zy + y_coords;
+                zx = temp_zx;
                 iterations++;
             }
-
+            int greyscalVal = (iterations / cutoff * 255);
             // Store the result in the image array
-            map[i * N + j] = get_color(iterations, cutoff);
+            map[i * N + j] = greyscalVal;
         }
     }
-    // while (order < cutoff || cabs(z_n) < 2.0) {
-    // }
 
 }
-void write_pgm(char *filename, int* map, size_t order, int cutoff) {
+void write_pgm(char *filename, int* map, size_t N, int cutoff) {
     FILE* fp;
     size_t i;
     char* pixels;
 
-    pixels = malloc(order * order);
+    pixels = malloc(N * N);
 
-    for (i = 0; i < order * order; i++) {
+    for (i = 0; i < N * N; i++) {
         pixels[i] = map[i];
     }
 
@@ -60,8 +61,11 @@ void write_pgm(char *filename, int* map, size_t order, int cutoff) {
 		fprintf(stderr, "Error: cannot open file %s", filename);
 		exit(1);
 	}
-    fprintf(fp, "P5\n%ld %ld\n%ld\n", order, order, cutoff);
-    // fwrite(pixels);
+    fprintf(fp, "P5\n%ld %ld\n%d\n", N, N, cutoff);
+    fwrite(pixels, sizeof(char), N * N, fp);
+
+    free(pixels);
+    fclose(fp);
 
 }
 /*
@@ -108,14 +112,14 @@ int main(int argc, char *argv[])
 	parse_double(argv[4], "zoom", 0, 100, &zoom);
 	parse_int(argv[5], "cutoff", 10, 255, &cutoff);
 
-    map = aligned_alloc(64, order * order * sizeof(double complex));
+    map = aligned_alloc(64, order * order * sizeof(double));
 
     /* Call implementation */
     mandelbrot(map, order, xcenter, ycenter, zoom, cutoff); 
 
     /* Save output image */
 	filename = malloc(PATH_MAX);
-	sprintf(filename, "hmap_%d_%.3lf_%.3lf_%.3lf_%d",
+	sprintf(filename, "mandel_%d_%.3lf_%.3lf_%.3lf_%d",
 			order, xcenter, ycenter, zoom, cutoff);
 	if (argc > 6)
 		strcat(filename, argv[6]);
