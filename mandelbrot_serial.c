@@ -39,7 +39,7 @@ void mandelbrot(int* map, size_t N, double xcenter, double ycenter, double zoom,
                 zx = temp_zx;
                 iterations++;
             }
-            int greyscaleVal = (int)((iterations / (double)cutoff) * 255.0);
+            int greyscaleVal = (int)iterations;
             // Store the result in the image array
             map[j * N + i] = greyscaleVal;
         }
