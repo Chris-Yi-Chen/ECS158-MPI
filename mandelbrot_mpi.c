@@ -32,7 +32,8 @@ void worker_loop(void) {
         /* Stop order: break loop and quit DO WE NEED THIS? */
 
 
-
+        /* Send when done calculating */
+        // MPI_Send(NULL, 0, MPI_BYTE, MANAGER_NODE, 0, MPI_COMM_WORLD);
     }
 }
 
