@@ -4,7 +4,7 @@
 #include <limits.h>
 #include <math.h>
 
-//gcc -g -Wall -Wextra -Werror -O2 .\mandelbrot_serial.c -o mandelbrot_serial
+//gcc -g -Wall -Wextra -Werror -O2 .\mandelbrot_serial.c -o mandelbrot_serial -lm
 void mandelbrot(int* map, size_t N, double xcenter, double ycenter, double zoom, int cutoff) {
     size_t i,j;
 
@@ -18,8 +18,10 @@ void mandelbrot(int* map, size_t N, double xcenter, double ycenter, double zoom,
     // Calculate the bounds of the plot area
     double x_min = xcenter - half_width;
     double y_max = ycenter + half_height;
-
+    
+    // iterate through x points 
     for (i = 0; i < N; i++) {
+        // iterate through y points
         for (j = 0; j < N; j++) {
             // x and y coordinates
             double x_coords = x_min + (i * dist);
@@ -37,9 +39,9 @@ void mandelbrot(int* map, size_t N, double xcenter, double ycenter, double zoom,
                 zx = temp_zx;
                 iterations++;
             }
-            int greyscalVal = (iterations / cutoff * 255);
+            int greyscaleVal = (int)((iterations / (double)cutoff) * 255.0);
             // Store the result in the image array
-            map[i * N + j] = greyscalVal;
+            map[j * N + i] = greyscaleVal;
         }
     }
 
@@ -112,7 +114,7 @@ int main(int argc, char *argv[])
 	parse_double(argv[4], "zoom", 0, 100, &zoom);
 	parse_int(argv[5], "cutoff", 10, 255, &cutoff);
 
-    map = aligned_alloc(64, order * order * sizeof(double));
+    map = aligned_alloc(64, order * order * sizeof(int));
 
     /* Call implementation */
     mandelbrot(map, order, xcenter, ycenter, zoom, cutoff); 
