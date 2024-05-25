@@ -94,11 +94,9 @@ void worker_loop(void) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_proc);
 
-    fprintf(stderr, "Rank: %d\n", rank);
-    fprintf(stderr, "Number of processes: %d\n\n", num_proc);
 
-    int rows_per_worker = margs.order / (num_proc - 1);
-    int start = (rank - 1) * rows_per_worker;
+    int rows_per_worker = margs.order / (num_proc);
+    int start = (rank) * rows_per_worker;
 
     // if last worker, finish the remaining (to N)
 
@@ -106,22 +104,14 @@ void worker_loop(void) {
 
     int num_rows = end - start;
 
-    fprintf(stderr, "Rows per worker: %d\n", rows_per_worker);
-    fprintf(stderr, "Start row: %d\n", start);
-    fprintf(stderr, "End row: %d\n", end);
-    fprintf(stderr, "Number of rows: %d\n", num_rows);
-
     int* work_map = malloc(margs.order * num_rows * sizeof(int));
     mandelbrot(work_map, margs.order, margs.xcenter, margs.ycenter, margs.zoom, margs.cutoff, start, end);
-    fprintf(stderr, "before gather\n");
 
     MPI_Gatherv(work_map, margs.order * num_rows, MPI_INT, NULL, NULL, NULL, MPI_INT, MANAGER_NODE, MPI_COMM_WORLD);
-    fprintf(stderr, "after gather\n");
 
     free(work_map);
 
 }
-
 
 
 void manager_loop(int num_workers, struct mandelbrot_args *margs, int* map) {
@@ -130,26 +120,20 @@ void manager_loop(int num_workers, struct mandelbrot_args *margs, int* map) {
     int rows_per_worker = margs->order / num_workers;
     int remaining_rows = margs->order % num_workers;
 
-    fprintf(stderr, "rows_per_worker: %d\n", rows_per_worker);
-    fprintf(stderr, "remaining_rows: %d\n", remaining_rows);
-    fprintf(stderr, "num_workers: %d\n", num_workers);
 
-    int* recvcounts = malloc(num_workers * sizeof(int));
-    int* displs = malloc(num_workers * sizeof(int));
-
-    
+    int* recvcounts = malloc((num_workers) * sizeof(int));
+    int* displs = malloc((num_workers) * sizeof(int));
 
     for (int i = 0; i < num_workers; i++) {
         // # of rows for each process, last proc may have a different value
         recvcounts[i] = (i == num_workers - 1) ? (rows_per_worker + remaining_rows) * margs->order : rows_per_worker * margs->order;
         displs[i] = i * rows_per_worker * margs->order;
-        fprintf(stderr, "i: %d\nrecvcounts: %d\n", i, recvcounts[i]);
-        fprintf(stderr, "displs: %d\n\n", displs[i]);
     }
 
-
     MPI_Gatherv(NULL, 0, MPI_INT, map, recvcounts, displs, MPI_INT, MANAGER_NODE, MPI_COMM_WORLD);
-    fprintf(stderr, "After manager gathers\n");
+
+	/* Manager process calculates its share */
+	mandelbrot(map, margs->order, margs->xcenter, margs->ycenter, margs->zoom, margs->cutoff, 0, margs->order / num_workers);
 
     free(recvcounts);
     free(displs);
@@ -193,7 +177,6 @@ void manager_main(int argc, char *argv[])
 
     /* Get # of tasks total */
     MPI_Comm_size(MPI_COMM_WORLD, &num_proc);
-    fprintf(stderr, "from manager: num_proc: %d\n", num_proc);
     if (num_proc == 1) {
 		fprintf(stderr, "Error: not enough tasks\n");
         exit(1);
@@ -221,7 +204,7 @@ void manager_main(int argc, char *argv[])
 
 
     /* Call manager loop */
-    manager_loop(num_proc - 1, &margs, map);
+    manager_loop(num_proc, &margs, map);
 
 
     /* Save output image */
